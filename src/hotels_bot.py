@@ -3,6 +3,7 @@ from aiogram.utils import executor
 from aiogram.types import Message, CallbackQuery
 
 from admin.admin_main import admin_commands
+from get_search_results import search_results
 from helpers import send_message, delete_message, on_startup
 from main import ADMIN_ID, dp, AskUserInfo, LIST_ADMIN_COMMANDS
 from buttons import start_markup, short_answer_markup
@@ -45,36 +46,46 @@ async def call_back_message(call: CallbackQuery):
 
 @dp.message_handler(state=AskUserInfo.price)
 async def price_state(message: Message, state: FSMContext):
-    if '-' in message.text and all(x not in message.text for x in [',', '.', ':', '!']):
-        split_price = str(message.text).split('-')
-        from_price = split_price[0].replace(' ', '')
-        to_price = split_price[1].replace(' ', '')
+    if message.text == '/start':
+        await send_message(message.chat.id, 'action-rejected')
+        await state.finish()
+        return
 
-        if from_price.isdigit() and to_price.isdigit():
-            if int(from_price) < int(to_price):
-                await state.update_data(from_price=int(from_price))
-                await state.update_data(to_price=int(to_price))
-                await send_message(message.chat.id, 'ask-schengen', markup=short_answer_markup)
-                await AskUserInfo.schengen.set()
-                return
+    if all(x not in message.text for x in [',', '.', ':', '!']):
+        split_price = str(message.text).split('-')
+
+        if len(split_price) == 2:
+            from_price = split_price[0].replace(' ', '')
+            to_price = split_price[1].replace(' ', '')
+
+            if from_price.isdigit() and to_price.isdigit():
+                if int(from_price) < int(to_price):
+                    await state.update_data(from_price=int(from_price))
+                    await state.update_data(to_price=int(to_price))
+                    await send_message(message.chat.id, 'ask-people')
+                    await AskUserInfo.people.set()
+                    return
+
+        else:
+            from_price = int(split_price[0].replace(' ', '')) - 1
+            to_price = int(split_price[0].replace(' ', '')) + 1
+            await state.update_data(from_price=int(from_price))
+            await state.update_data(to_price=int(to_price))
+            await send_message(message.chat.id, 'ask-people')
+            await AskUserInfo.people.set()
+            return
 
     await send_message(message.chat.id, 'wrong-price')
     await AskUserInfo.price.set()
 
 
-@dp.message_handler(state=AskUserInfo.schengen)
-async def schengen_state(message: Message, state: FSMContext):
-    if any(message.text == x for x in ['Да', 'Нет']):
-        await state.update_data(schengen=message.text)
-        await send_message(message.chat.id, 'ask-people')
-        await AskUserInfo.people.set()
-    else:
-        await send_message(message.chat.id, 'wrong-schengen', markup=short_answer_markup)
-        await AskUserInfo.schengen.set()
-
-
 @dp.message_handler(state=AskUserInfo.people)
 async def people_state(message: Message, state: FSMContext):
+    if message.text == '/start':
+        await send_message(message.chat.id, 'action-rejected')
+        await state.finish()
+        return
+
     if str(message.text).isdigit() and int(message.text) != 0:
         await state.update_data(people=message.text)
         await send_message(message.chat.id, 'ask-days')
@@ -86,6 +97,11 @@ async def people_state(message: Message, state: FSMContext):
 
 @dp.message_handler(state=AskUserInfo.days)
 async def days_state(message: Message, state: FSMContext):
+    if message.text == '/start':
+        await send_message(message.chat.id, 'action-rejected')
+        await state.finish()
+        return
+
     if str(message.text).isdigit() and int(message.text) != 0:
         await state.update_data(days=message.text)
         await send_message(message.chat.id, 'ask-sea', markup=short_answer_markup)
@@ -97,8 +113,29 @@ async def days_state(message: Message, state: FSMContext):
 
 @dp.message_handler(state=AskUserInfo.sea)
 async def sea_state(message: Message, state: FSMContext):
+    if message.text == '/start':
+        await send_message(message.chat.id, 'action-rejected')
+        await state.finish()
+        return
+
     if any(message.text == x for x in ['Да', 'Нет']):
         await state.update_data(sea=message.text)
+        await send_message(message.chat.id, 'ask-schengen', markup=short_answer_markup)
+        await AskUserInfo.schengen.set()
+    else:
+        await send_message(message.chat.id, 'wrong-sea', markup=short_answer_markup)
+        await AskUserInfo.sea.set()
+
+
+@dp.message_handler(state=AskUserInfo.schengen)
+async def schengen_state(message: Message, state: FSMContext):
+    if message.text == '/start':
+        await send_message(message.chat.id, 'action-rejected')
+        await state.finish()
+        return
+
+    if any(message.text == x for x in ['Да', 'Нет']):
+        await state.update_data(schengen=message.text)
 
         data = await state.get_data()
         from_price = data['from_price']
@@ -108,21 +145,59 @@ async def sea_state(message: Message, state: FSMContext):
         days = data['days']
         sea = data['sea']
 
+        if int(to_price) - int(from_price) == 2:
+            from_price = to_price - 1
+            to_price = to_price - 1
+
         args = from_price, to_price, schengen, people, days, sea
         await send_message(message.chat.id, 'ask-sure', args=args, markup=short_answer_markup, markdown=True)
 
         await AskUserInfo.sure.set()
     else:
-        await send_message(message.chat.id, 'wrong-sea', markup=short_answer_markup)
-        await AskUserInfo.sea.set()
+        await send_message(message.chat.id, 'wrong-schengen', markup=short_answer_markup)
+        await AskUserInfo.schengen.set()
 
 
 @dp.message_handler(state=AskUserInfo.sure)
 async def sea_state(message: Message, state: FSMContext):
+    if message.text == '/start':
+        await send_message(message.chat.id, 'action-rejected')
+        await state.finish()
+        return
+
     if any(message.text == x for x in ['Да', 'Нет']):
-        await state.update_data(schengen=message.text)
         await send_message(message.chat.id, 'searching')
-        # await search_results(state)
+
+        data = await state.get_data()
+        first_from_price = data['from_price']
+        first_to_price = data['to_price']
+        schengen = data['schengen']
+        people = data['people']
+        days = data['days']
+        sea = data['sea']
+
+        price_from_for_any_days = int(first_from_price) / int(days)
+        price_to_for_any_days = int(first_to_price) / int(days)
+
+        affordable_list = await search_results(price_from_for_any_days, price_to_for_any_days, schengen, sea)
+
+        if not affordable_list:
+            search_result = 'Ничего не нашлось 😔'
+        else:
+            search_result = '\n'.join(affordable_list)
+
+        if int(first_to_price) - int(first_from_price) == 2:
+            first_from_price = first_to_price - 1
+            first_to_price = first_to_price - 1
+
+        price_for_all_from = int(first_from_price) * int(people)
+        price_for_all_to = int(first_to_price) * int(people)
+
+        args = [first_from_price, first_to_price, people, days, price_for_all_from,
+                price_for_all_to, sea, schengen, search_result]
+
+        await send_message(message.chat.id, 'search-results', args=args, markdown=True)
+        await state.finish()
     else:
         await send_message(message.chat.id, 'wrong-schengen', markup=short_answer_markup)
         await AskUserInfo.sure.set()

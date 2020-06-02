@@ -129,3 +129,4 @@ dmypy.json
 *.xml
 *.iml
 src/config.py
+src/admin_file/admin_file.csv
