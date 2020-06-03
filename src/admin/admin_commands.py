@@ -129,5 +129,5 @@ async def convert_file_to_csv(directory, file_name):
 
 
 async def users_count(message):
-    count_users = users_db.keys()
+    count_users = len(users_db.keys())
     await bot.send_message(message.chat.id, 'Всего {} пользователей в боте'.format(count_users))

@@ -13,8 +13,8 @@ dp = Dispatcher(bot, storage=storage, loop=loop)
 
 users_db = redis.StrictRedis(host='localhost', port=6379, db=1)
 
-ADMIN_ID = 653391824
-LIST_ADMIN_COMMANDS = ['send_everyone', 'admin', 'new_file']
+ADMIN_IDS = [653391824, 283357871]
+LIST_ADMIN_COMMANDS = ['send_everyone', 'admin', 'new_file', 'users_count']
 
 
 class AdminSendEveryOne(StatesGroup):
