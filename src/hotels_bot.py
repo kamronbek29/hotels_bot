@@ -5,7 +5,7 @@ from aiogram.types import Message, CallbackQuery
 from admin.admin_main import admin_commands
 from get_search_results import search_results
 from helpers import send_message, delete_message, on_startup
-from main import ADMIN_IDS, dp, AskUserInfo, LIST_ADMIN_COMMANDS
+from main import ADMIN_IDS, dp, AskUserInfo, LIST_ADMIN_COMMANDS, users_db
 from buttons import start_markup, short_answer_markup
 
 
@@ -20,6 +20,10 @@ async def admin_command(message: Message):
 # Ответ на команду /start
 @dp.message_handler(commands=['start'])
 async def start_command(message: Message):
+    is_user_in_db = users_db.get(message.chat.id)
+    if not is_user_in_db:
+        users_db.set(message.chat.id, message.chat.id)
+
     # await save_user_info(message.chat.id)
     await send_message(message.chat.id, 'command-start', markup=start_markup)
 
